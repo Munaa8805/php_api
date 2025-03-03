@@ -50,4 +50,60 @@ class TaskGateway
 
         return $this->conn->lastInsertId();
     }
+
+    public function update(int $id, array $data): int
+    {
+
+        $fields = [];
+
+
+        if (array_key_exists('name', $data)) {
+            $fields['name'] = [
+                $data['name'],
+                PDO::PARAM_STR
+            ];
+        }
+        if (array_key_exists('priority', $data)) {
+            $fields['priority'] = [
+                $data['priority'],
+                $data['priority'] ? PDO::PARAM_INT : PDO::PARAM_NULL
+            ];
+        }
+        if (array_key_exists('is_completed', $data)) {
+            $fields['is_completed'] = [
+                $data['is_completed'],
+                PDO::PARAM_BOOL
+            ];
+        }
+
+
+        if (empty($fields)) {
+            return 0;
+        } else {
+            $sets = array_map(function ($value) {
+                return "$value=:$value";
+            }, array_keys($fields));
+            // print_r($sets);
+
+            $sql = "UPDATE tasks SET " . implode(",", $sets) . " WHERE id = :id";
+            // echo $sql;
+            // exit;
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            foreach ($fields as $name => $values) {
+                $stmt->bindValue(":$name", $values[0], $values[1]);
+            }
+            $stmt->execute();
+            return $stmt->rowCount();
+        }
+    }
+
+    public function delete(int $id): int
+    {
+        $sql = "DELETE FROM tasks WHERE id = :id";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
 }
