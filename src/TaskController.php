@@ -3,13 +3,14 @@
 class TaskController
 {
     public function __construct(
-        private TaskGateway $gateway
+        private TaskGateway $gateway,
+        private int $user_id
     ) {}
     public function processRequest(string $method, ?string $id): void
     {
         if ($id == null) {
             if ($method == 'GET') {
-                echo json_encode($this->gateway->findAll());
+                echo json_encode($this->gateway->findAllForUser($this->user_id));
             } else if ($method == 'POST') {
                 // print_r($_POST);
                 $data = (array)json_decode(file_get_contents('php://input'), true);
@@ -19,14 +20,14 @@ class TaskController
                     $this->respondUnprocessableEntity($errors);
                     return;
                 }
-                $id = $this->gateway->create($data);
+                $id = $this->gateway->create($this->user_id, $data);
                 // echo json_encode(['id' => $id]);
                 $this->respondCreated($id);
             } else {
                 $this->respondMethodNotAllowed("GET, POST");
             }
         } else {
-            $task = $this->gateway->getFind((int)$id);
+            $task = $this->gateway->getFind($this->user_id, (int)$id);
             if ($task == false) {
                 $this->respondNotFound($id);
                 return;
@@ -44,12 +45,12 @@ class TaskController
                         $this->respondUnprocessableEntity($errors);
                         return;
                     }
-                    $rows =  $this->gateway->update($id, $data);
+                    $rows =  $this->gateway->update($this->user_id, $id, $data);
                     echo json_encode(['rows' => $rows, "message" => "Task $id updated"]);
                     break;
                 case 'DELETE':
 
-                    $rows = $this->gateway->delete((int)$id);
+                    $rows = $this->gateway->delete($this->user_id, (int)$id);
                     echo json_encode(['rows' => $rows, "message" => "Task $id deleted"]);
                     break;
                 default:

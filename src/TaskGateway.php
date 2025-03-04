@@ -11,9 +11,14 @@ class TaskGateway
     }
 
 
-    public function findAll(): array
+    public function findAllForUser(int $user_id): array
     {
-        $stmt = $this->conn->query('SELECT * FROM tasks');
+
+        $sql = 'SELECT * FROM tasks WHERE user_id = :user_id';
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+
         $data = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $row['is_completed'] = (bool)$row['is_completed'];
@@ -23,21 +28,26 @@ class TaskGateway
         // return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getFind(int $id): array | false
+    public function getFind(int $user_id, int $id): array | false
     {
-        $stmt = $this->conn->prepare('SELECT * FROM tasks WHERE id = :id');
-        $stmt->execute(['id' => $id]);
+
+        $sql = 'SELECT * FROM tasks WHERE user_id = :user_id AND id = :id';
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($data) {
             $data['is_completed'] = (bool)$data['is_completed'];
         }
         return $data;
     }
-    public function create(array $data): string
+    public function create(int $user_id, array $data): string
     {
-        $sql = 'INSERT INTO tasks (name,priority, is_completed) VALUES (:name,:priority, :is_completed)';
+        $sql = 'INSERT INTO tasks (name,priority, is_completed, user_id) VALUES (:name,:priority, :is_completed,:user_id)';
         $stmt = $this->conn->prepare($sql);
         $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+        $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
         if (empty($data['priority'])) {
             $stmt->bindValue(':priority', null, PDO::PARAM_NULL);
         } else {
@@ -51,7 +61,7 @@ class TaskGateway
         return $this->conn->lastInsertId();
     }
 
-    public function update(int $id, array $data): int
+    public function update(int $user_id, int $id, array $data): int
     {
 
         $fields = [];
@@ -85,11 +95,12 @@ class TaskGateway
             }, array_keys($fields));
             // print_r($sets);
 
-            $sql = "UPDATE tasks SET " . implode(",", $sets) . " WHERE id = :id";
+            $sql = "UPDATE tasks SET " . implode(",", $sets) . " WHERE id = :id AND user_id = :user_id";
             // echo $sql;
             // exit;
             $stmt = $this->conn->prepare($sql);
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
             foreach ($fields as $name => $values) {
                 $stmt->bindValue(":$name", $values[0], $values[1]);
             }
@@ -98,11 +109,12 @@ class TaskGateway
         }
     }
 
-    public function delete(int $id): int
+    public function delete(int $user_id, int $id): int
     {
-        $sql = "DELETE FROM tasks WHERE id = :id";
+        $sql = "DELETE FROM tasks WHERE id = :id AND user_id = :user_id";
         $stmt = $this->conn->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->rowCount();
     }
